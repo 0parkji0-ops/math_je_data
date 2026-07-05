@@ -98,7 +98,7 @@ with col2:
             st.markdown(prompt)
 
         # Gemini 모델 설정
-        model = genai.GenerativeModel('gemini-1.5-flash', system_instruction=SYSTEM_INSTRUCTION)
+        model = genai.GenerativeModel('gemini-1.5-pro', system_instruction=SYSTEM_INSTRUCTION)
         
         # API 전송을 위한 이전 대화 빌드
         history = []
