@@ -13,6 +13,8 @@ except Exception as e:
     st.error("API 키 설정이 없습니다.")
     st.stop()
 
+st.title("📊 DataReasoning")
+
 # 3. 사용 가능한 모델 자동 선택 함수
 def get_model():
     # 모든 모델 중 'generateContent'가 가능한 모델만 검색
