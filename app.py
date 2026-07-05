@@ -75,7 +75,7 @@ if prompt := st.chat_input("이 그래프들의 차이점이나 공통점은 수
     with st.chat_message("assistant"):
         try:
             model = get_model()
-            full_prompt = f"{SYSTEM_PROMPT}\n\n학생의 관찰: {prompt}\n\n위 내용을 수학적 언어로 해석하고 추가 질문을 던져주세요."
+            full_prompt = f"{SYSTEM_INSTRUCTION}\n\n학생의 관찰: {prompt}\n\n위 내용을 수학적 언어로 해석하고 추가 질문을 던져주세요."
             parts = [full_prompt]
             parts.extend(images)
             
