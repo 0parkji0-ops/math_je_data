@@ -2,17 +2,25 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
+# 1. 페이지 설정
 st.set_page_config(page_title="DataReasoning", page_icon="📊", layout="wide")
 
-# API 설정
+# 2. API 설정
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
-    # 가장 범용적이고 안정적인 모델명 사용
-    model = genai.GenerativeModel('gemini-1.5-flash')
 except Exception as e:
-    st.error("API 키 설정을 확인해주세요.")
+    st.error("API 키 설정이 없습니다.")
     st.stop()
+
+# 3. 사용 가능한 모델 자동 선택 함수
+def get_model():
+    # 모든 모델 중 'generateContent'가 가능한 모델만 검색
+    for m in genai.list_models():
+        if 'generateContent' in m.supported_generation_methods:
+            # gemini-1.5, gemini-pro 등이 있으면 우선 선택
+            return genai.GenerativeModel(m.name)
+    raise Exception("사용 가능한 모델을 찾을 수 없습니다.")
 
 st.title("📊 DataReasoning - 멀티 비교 분석")
 
