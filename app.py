@@ -2,16 +2,30 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
-# 1. 페이지 설정
 st.set_page_config(page_title="DataReasoning", page_icon="📊", layout="wide")
 
-# 2. API 설정
+# API 설정
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
+    # 가장 범용적이고 안정적인 모델명 사용
+    model = genai.GenerativeModel('gemini-1.5-flash')
 except Exception as e:
-    st.error("API 키 설정이 없습니다.")
+    st.error("API 키 설정을 확인해주세요.")
     st.stop()
+
+st.title("📊 DataReasoning - 멀티 비교 분석")
+
+# 1. 다중 파일 업로드 (accept_multiple_files=True)
+with st.sidebar:
+    st.subheader("데이터 업로드 (여러 개 가능)")
+    uploaded_files = st.file_uploader("분석할 이미지들을 선택하세요", type=["jpg", "png", "jpeg"], accept_multiple_files=True)
+    
+    images = []
+    if uploaded_files:
+        for f in uploaded_files:
+            images.append(Image.open(f))
+        st.write(f"현재 {len(images)}개의 그래프가 업로드되었습니다.")
 
 SYSTEM_PROMPT = """
 당신은 학생들의 비판적 사고를 돕는 데이터 분석 조력자 'DataReasoning'입니다.
@@ -29,53 +43,29 @@ SYSTEM_PROMPT = """
 - 어려운 수학 공식보다는 직관적인 언어를 사용하세요.
 """
 
-# 3. 사용 가능한 모델 자동 선택 함수
-def get_model():
-    # 모든 모델 중 'generateContent'가 가능한 모델만 검색
-    for m in genai.list_models():
-        if 'generateContent' in m.supported_generation_methods:
-            # gemini-1.5, gemini-pro 등이 있으면 우선 선택
-            return genai.GenerativeModel(m.name)
-    raise Exception("사용 가능한 모델을 찾을 수 없습니다.")
-
-st.title("📊 DataReasoning")
-
+# 2. 대화창
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "분석할 데이터를 올리고 대화를 시작해줘!"}]
+    st.session_state.messages = [{"role": "assistant", "content": "그래프들을 올리고 비교 분석을 시작해봐!"}]
 
-col1, col2 = st.columns([1, 1])
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
 
-with col1:
-    uploaded_file = st.file_uploader("이미지 업로드", type=["jpg", "png", "jpeg"])
-    img = Image.open(uploaded_file) if uploaded_file else None
-    if img: st.image(img, use_column_width=True)
+# 3. 채팅 입력
+if prompt := st.chat_input("이 그래프들의 차이점이나 공통점은 무엇인가요?"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    with st.chat_message("user"):
+        st.markdown(prompt)
 
-with col2:
-    if st.button("🔄 대화 초기화"):
-        st.session_state.messages = []
-        st.rerun()
-
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    if prompt := st.chat_input("질문을 입력하세요"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        with st.chat_message("assistant"):
-            try:
-                # 모델 자동 선택
-                model = get_model()
-                
-                # 프롬프트 구성 (한국어 강제)
-                full_prompt = f"당신은 데이터 분석 조력자입니다. 반드시 한국어로 대답하세요. 질문: {prompt}"
-                parts = [full_prompt]
-                if img: parts.append(img)
-                
-                response = model.generate_content(parts)
-                st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
-            except Exception as e:
-                st.error(f"오류: {e}")
+    with st.chat_message("assistant"):
+        try:
+            # 여러 이미지를 리스트에 담아 프롬프트와 함께 전송
+            parts = [prompt, "너는 데이터 분석가야. 아래 업로드된 여러 그래프들을 비교 분석해서 한국어로 설명해줘."]
+            if images:
+                parts.extend(images)
+            
+            response = model.generate_content(parts)
+            st.markdown(response.text)
+            st.session_state.messages.append({"role": "assistant", "content": response.text})
+        except Exception as e:
+            st.error(f"분석 오류: {e}")
