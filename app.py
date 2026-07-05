@@ -13,8 +13,6 @@ except Exception as e:
     st.error("API 키 설정이 없습니다.")
     st.stop()
 
-st.title("📊 DataReasoning")
-
 # 3. 사용 가능한 모델 자동 선택 함수
 def get_model():
     # 모든 모델 중 'generateContent'가 가능한 모델만 검색
@@ -37,6 +35,14 @@ with st.sidebar:
             images.append(Image.open(f))
         st.write(f"현재 {len(images)}개의 그래프가 업로드되었습니다.")
 
+# 2. 대화창
+if "messages" not in st.session_state:
+    st.session_state.messages = [{"role": "assistant", "content": "그래프들을 올리고 비교 분석을 시작해봐!"}]
+
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
 SYSTEM_PROMPT = """
 당신은 학생들의 비판적 사고를 돕는 데이터 분석 조력자 'DataReasoning'입니다.
 모든 대화는 반드시 자연스러운 한국어로 진행하세요.
@@ -52,14 +58,6 @@ SYSTEM_PROMPT = """
 - 답을 바로 주지 말고 질문을 통해 학생이 생각하게 하세요.
 - 어려운 수학 공식보다는 직관적인 언어를 사용하세요.
 """
-
-# 2. 대화창
-if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "그래프들을 올리고 비교 분석을 시작해봐!"}]
-
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
 
 # 3. 채팅 입력
 if prompt := st.chat_input("이 그래프들의 차이점이나 공통점은 무엇인가요?"):
