@@ -2,59 +2,47 @@ import streamlit as st
 import google.generativeai as genai
 from PIL import Image
 
-# 1. 페이지 설정
 st.set_page_config(page_title="DataReasoning", page_icon="📊", layout="wide")
 
-# 2. API 설정
+# API 설정
 try:
     api_key = st.secrets["GEMINI_API_KEY"]
     genai.configure(api_key=api_key)
 except Exception:
-    st.error("API 키 설정이 필요합니다. Streamlit Secrets에 GEMINI_API_KEY를 입력해주세요.")
+    st.error("API 키 설정이 필요합니다.")
     st.stop()
-
-# 3. 시스템 프롬프트
-SYSTEM_INSTRUCTION = "당신은 학생들의 비판적 사고를 돕는 데이터 분석 조력자입니다. 4단계(관찰-수치 연결-패턴 분석-보고서 구조화)를 준수하며 대화하세요."
 
 st.title("📊 DataReasoning")
 
+# 사용 가능한 모델 자동 검색
+def get_model():
+    # 현재 사용 가능한 모델 리스트를 확인
+    models = [m for m in genai.list_models() if 'generateContent' in m.supported_generation_methods]
+    # flash 모델이 있다면 사용, 없으면 첫 번째 모델 사용
+    for m in models:
+        if 'gemini-1.5-flash' in m.name:
+            return genai.GenerativeModel(m.name)
+    return genai.GenerativeModel(models[0].name)
+
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "분석할 그래프/표를 왼쪽에 올리고 말을 걸어줘!"}]
+    st.session_state.messages = [{"role": "assistant", "content": "데이터를 업로드하고 질문해주세요!"}]
 
-col1, col2 = st.columns([1, 1])
+uploaded_file = st.file_uploader("이미지 업로드", type=["jpg", "png", "jpeg"])
+img = Image.open(uploaded_file) if uploaded_file else None
 
-with col1:
-    uploaded_file = st.file_uploader("이미지 업로드", type=["jpg", "png", "jpeg"])
-    img = None
-    if uploaded_file:
-        img = Image.open(uploaded_file)
-        st.image(img, use_column_width=True)
+if prompt := st.chat_input("질문을 입력하세요"):
+    st.session_state.messages.append({"role": "user", "content": prompt})
+    
+    try:
+        model = get_model() # 여기서 자동 검색된 모델 사용
+        parts = [prompt]
+        if img: parts.append(img)
+        
+        response = model.generate_content(parts)
+        st.session_state.messages.append({"role": "assistant", "content": response.text})
+    except Exception as e:
+        st.error(f"오류: {e}")
 
-with col2:
-    # 채팅 기록 출력
-    for msg in st.session_state.messages:
-        with st.chat_message(msg["role"]):
-            st.markdown(msg["content"])
-
-    # 채팅 입력
-    if prompt := st.chat_input("데이터에서 무엇이 보이니?"):
-        st.session_state.messages.append({"role": "user", "content": prompt})
-        with st.chat_message("user"):
-            st.markdown(prompt)
-
-        # 모델 호출 변경: 'gemini-1.5-flash' 대신 더 포괄적인 이름으로 시도
-        try:
-            # 설정된 키에 따라 가장 최신 모델을 자동으로 잡도록 시도
-            model = genai.GenerativeModel(model_name='gemini-pro', system_instruction=SYSTEM_INSTRUCTION)
-            
-            parts = [prompt]
-            if img:
-                parts.append(img)
-            
-            response = model.generate_content(parts)
-            
-            with st.chat_message("assistant"):
-                st.markdown(response.text)
-                st.session_state.messages.append({"role": "assistant", "content": response.text})
-        except Exception as e:
-            st.error(f"분석 중 오류 발생: {e}")
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
